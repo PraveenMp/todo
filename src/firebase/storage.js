@@ -1,5 +1,32 @@
-import { db } from './config'
+import { db, storage } from './config'
 import { doc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+
+// Upload file to Cloud Storage
+export const uploadFileToStorage = async (userId, file) => {
+  try {
+    const fileName = `${Date.now()}_${file.name}`
+    const storagePath = `users/${userId}/documents/${fileName}`
+    const storageRef = ref(storage, storagePath)
+    
+    // Upload file to Cloud Storage
+    await uploadBytes(storageRef, file)
+    
+    // Get download URL
+    const downloadUrl = await getDownloadURL(storageRef)
+    
+    return {
+      fileName,
+      downloadUrl,
+      size: file.size,
+      type: file.type,
+      uploadedAt: new Date().toISOString()
+    }
+  } catch (error) {
+    console.error('Error uploading file to storage:', error)
+    throw error
+  }
+}
 
 // Convert file to base64 for Firestore storage
 const fileToBase64 = (file) => {

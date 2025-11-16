@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2, Edit2, Download } from 'lucide-react'
 import { subscribeToUserDocuments, addDocumentType, updateDocumentRecord, deleteDocumentRecord, deleteDocumentType } from '../firebase/firestore'
+import { uploadFileToStorage } from '../firebase/storage'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function DocumentsV2() {
@@ -214,6 +215,7 @@ export default function DocumentsV2() {
               showNewRecordForm={showNewRecordForm}
               onSubmitRecord={(data) => handleAddRecord(selectedTypeId, data)}
               onCancelRecord={() => setShowNewRecordForm(false)}
+              currentUser={currentUser}
             />
           )}
         </>
@@ -223,7 +225,7 @@ export default function DocumentsV2() {
 }
 
 // Document Type Detail Component - Table View
-function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord }) {
+function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord, currentUser }) {
   const isDarkMode = document.body.classList.contains('dark-mode')
 
   if (!docType) return null
@@ -525,7 +527,7 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
                         textAlign: 'center'
                       }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          {record.downloadLink && (
+                          {record.downloadLink ? (
                             <button
                               onClick={() => onDownload(record.downloadLink)}
                               style={{
@@ -547,7 +549,10 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
                               title="Download document"
                             >
                               <Download size={14} />
+                              Download
                             </button>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>No file</span>
                           )}
                           <button
                             onClick={() => onDeleteRecord(record.id)}
@@ -634,6 +639,7 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
               <NewRecordForm
                 onSubmit={onSubmitRecord}
                 onCancel={onCancelRecord}
+                currentUser={currentUser}
               />
             </div>
           </div>
@@ -644,7 +650,7 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
 }
 
 // Document Type Card Component
-function DocumentTypeCard({ docType, isExpanded, onToggleExpand, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord }) {
+function DocumentTypeCard({ docType, isExpanded, onToggleExpand, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord, currentUser }) {
   const isDarkMode = document.body.classList.contains('dark-mode')
 
   return (
@@ -839,6 +845,7 @@ function DocumentTypeCard({ docType, isExpanded, onToggleExpand, onAddRecord, on
                   <NewRecordForm
                     onSubmit={onSubmitRecord}
                     onCancel={onCancelRecord}
+                    currentUser={currentUser}
                   />
                 </div>
               </div>
@@ -956,7 +963,7 @@ function RecordItem({ record, onDelete, onDownload }) {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-          {record.downloadLink && (
+          {record.downloadLink ? (
             <button
               onClick={onDownload}
               style={{
@@ -979,7 +986,10 @@ function RecordItem({ record, onDelete, onDownload }) {
               title="Download document"
             >
               <Download size={16} />
+              Download
             </button>
+          ) : (
+            <span style={{ fontSize: '13px', color: '#6b7280', padding: '10px 14px' }}>No file</span>
           )}
           <button
             onClick={onDelete}
@@ -1130,7 +1140,7 @@ function NewDocumentTypeForm({ onSubmit, onCancel }) {
 }
 
 // New Record Form
-function NewRecordForm({ onSubmit, onCancel }) {
+function NewRecordForm({ onSubmit, onCancel, currentUser }) {
   const [formData, setFormData] = useState({
     name: '',
     number: '',
@@ -1148,24 +1158,25 @@ function NewRecordForm({ onSubmit, onCancel }) {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Check file size (100MB limit for Cloud Storage)
+    if (file.size > 100 * 1024 * 1024) {
+      alert('File size exceeds 100MB limit')
+      return
+    }
+
     setUploading(true)
     setFileName(file.name)
     
     try {
-      // Convert file to base64
-      const reader = new FileReader()
-      reader.onload = () => {
-        setFormData(prev => ({ ...prev, downloadLink: reader.result }))
-        setUploading(false)
-      }
-      reader.onerror = () => {
-        alert('Failed to read file')
-        setUploading(false)
-      }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      console.error('File error:', error)
+      // Upload file to Cloud Storage
+      const fileData = await uploadFileToStorage(currentUser.uid, file)
+      setFormData(prev => ({ ...prev, downloadLink: fileData.downloadUrl }))
       setUploading(false)
+    } catch (error) {
+      console.error('File upload error:', error)
+      alert('Failed to upload file: ' + error.message)
+      setUploading(false)
+      setFileName('')
     }
   }
 
@@ -1362,11 +1373,11 @@ function NewRecordForm({ onSubmit, onCancel }) {
         )}
         {uploading && (
           <p style={{ margin: '8px 0', fontSize: '13px', color: '#3b82f6', fontWeight: '600' }}>
-            ⏳ Processing file...
+            ⏳ Uploading file to storage...
           </p>
         )}
         <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-          Supports: PDF, Images, Word, Excel • Max 5MB
+          Supports: PDF, Images, Word, Excel • Max 100MB
         </p>
       </div>
 

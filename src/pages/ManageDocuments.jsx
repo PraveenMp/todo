@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, CreditCard, Trash2, Edit2, Check, X } from 'lucide-react'
+import { FileText, CreditCard, Trash2, Edit2, Check, X, File, Shield, Briefcase, Award, Plane, Pill } from 'lucide-react'
 import { subscribeToDocuments, addDocumentSection as addDocumentFirebase, updateDocumentSection as updateDocumentFirebase, deleteDocumentSection as deleteDocumentFirebase } from '../firebase/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -11,6 +11,12 @@ const defaultDocuments = [
 const iconOptions = {
   FileText: <FileText size={18} />,
   CreditCard: <CreditCard size={18} />,
+  File: <File size={18} />,
+  Shield: <Shield size={18} />,
+  Briefcase: <Briefcase size={18} />,
+  Award: <Award size={18} />,
+  Plane: <Plane size={18} />,
+  Pill: <Pill size={18} />,
 }
 
 export default function ManageDocuments() {

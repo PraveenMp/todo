@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { LayoutGrid, Briefcase, Home, Folder, Trash2, Edit2, Check, X } from 'lucide-react'
+import { LayoutGrid, Briefcase, Home, Folder, Trash2, Edit2, Check, X, Star, Heart, Zap, Target, BookOpen, Code, Palette, Music } from 'lucide-react'
 import { subscribeToCategories, addCategory as addCategoryFirebase, updateCategory as updateCategoryFirebase, deleteCategory as deleteCategoryFirebase } from '../firebase/firestore'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -15,6 +15,14 @@ const iconOptions = {
   Briefcase: <Briefcase size={18} />,
   Home: <Home size={18} />,
   Folder: <Folder size={18} />,
+  Star: <Star size={18} />,
+  Heart: <Heart size={18} />,
+  Zap: <Zap size={18} />,
+  Target: <Target size={18} />,
+  BookOpen: <BookOpen size={18} />,
+  Code: <Code size={18} />,
+  Palette: <Palette size={18} />,
+  Music: <Music size={18} />,
 }
 
 export default function ManageCategories() {

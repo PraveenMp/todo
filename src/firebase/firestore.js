@@ -147,3 +147,79 @@ export const getUserProfile = async (userId) => {
   const snapshot = await getDoc(userRef)
   return snapshot.exists() ? snapshot.data() : null
 }
+
+// ============ DOCUMENTS V2 (NEW STRUCTURE) ============
+export const subscribeToUserDocuments = (userId, callback) => {
+  const documentsRef = collection(db, 'users', userId, 'documentsV2')
+  return onSnapshot(documentsRef, (snapshot) => {
+    const documents = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        type: data.type,
+        notes: data.notes,
+        records: data.records || []
+      }
+    })
+    callback(documents)
+  })
+}
+
+export const addDocumentType = async (userId, typeData) => {
+  const docId = typeData.type.toLowerCase().replace(/\s+/g, '_')
+  const documentRef = doc(db, 'users', userId, 'documentsV2', docId)
+  await setDoc(documentRef, {
+    type: typeData.type,
+    notes: typeData.notes,
+    records: [],
+    createdAt: new Date().toISOString()
+  })
+  return docId
+}
+
+export const updateDocumentRecord = async (userId, typeId, recordData, action = 'add') => {
+  const documentRef = doc(db, 'users', userId, 'documentsV2', typeId)
+  const docSnap = await getDoc(documentRef)
+  
+  if (!docSnap.exists()) {
+    throw new Error('Document type not found')
+  }
+
+  const currentRecords = docSnap.data().records || []
+  
+  if (action === 'add') {
+    currentRecords.push({
+      id: Date.now().toString(),
+      ...recordData
+    })
+  } else if (action === 'update') {
+    const index = currentRecords.findIndex(r => r.id === recordData.id)
+    if (index !== -1) {
+      currentRecords[index] = recordData
+    }
+  }
+
+  await updateDoc(documentRef, {
+    records: currentRecords
+  })
+}
+
+export const deleteDocumentRecord = async (userId, typeId, recordId) => {
+  const documentRef = doc(db, 'users', userId, 'documentsV2', typeId)
+  const docSnap = await getDoc(documentRef)
+  
+  if (!docSnap.exists()) {
+    throw new Error('Document type not found')
+  }
+
+  const records = (docSnap.data().records || []).filter(r => r.id !== recordId)
+  
+  await updateDoc(documentRef, {
+    records: records
+  })
+}
+
+export const deleteDocumentType = async (userId, typeId) => {
+  const documentRef = doc(db, 'users', userId, 'documentsV2', typeId)
+  await deleteDoc(documentRef)
+}

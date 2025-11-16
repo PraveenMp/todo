@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { subscribeToTasks, subscribeToCategories, addTask as addTaskFirebase, updateTask } from '../firebase/firestore'
+import { subscribeToTasks, subscribeToCategories, addTask as addTaskFirebase, updateTask, deleteTask as deleteTaskFirebase } from '../firebase/firestore'
+import { X } from 'lucide-react'
 
 export default function CategoryPage() {
   const { categoryId } = useParams()
@@ -55,6 +56,16 @@ export default function CategoryPage() {
       await updateTask(currentUser.uid, taskId, { completed: !currentStatus })
     } catch (error) {
       console.error('Error updating task:', error)
+    }
+  }
+
+  const deleteTask = async (taskId) => {
+    if (!currentUser || !confirm('Are you sure you want to delete this task?')) return
+    
+    try {
+      await deleteTaskFirebase(currentUser.uid, taskId)
+    } catch (error) {
+      console.error('Error deleting task:', error)
     }
   }
 
@@ -120,9 +131,30 @@ export default function CategoryPage() {
           <p>No completed {categoryName.toLowerCase()} tasks</p>
         ) : (
           completedTasks.map(task => (
-            <div key={task.id} className="task" style={{ justifyContent: 'space-between' }}>
-              <span className="task-completed">{task.text}</span>
-              {task.category && <span className="badge">{task.category}</span>}
+            <div key={task.id} className="task" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="task-completed">{task.text}</span>
+                {task.category && <span className="badge">{task.category}</span>}
+              </div>
+              <button
+                onClick={() => deleteTask(task.id)}
+                style={{
+                  padding: '4px 8px',
+                  background: '#FECACA',
+                  color: '#DC2626',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  flexShrink: 0
+                }}
+                title="Delete task"
+              >
+                <X size={12} />
+              </button>
             </div>
           ))
         )}

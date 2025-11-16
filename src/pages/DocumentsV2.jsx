@@ -46,6 +46,16 @@ export default function DocumentsV2() {
     }
   }
 
+  const handleUpdateRecord = async (typeId, recordData) => {
+    if (!currentUser) return
+    try {
+      await updateDocumentRecord(currentUser.uid, typeId, recordData, 'update')
+      setEditingRecord(null)
+    } catch (error) {
+      alert('Failed to update record: ' + error.message)
+    }
+  }
+
   const handleDeleteRecord = async (typeId, recordId) => {
     if (!currentUser || !confirm('Delete this record?')) return
     try {
@@ -216,6 +226,10 @@ export default function DocumentsV2() {
               onSubmitRecord={(data) => handleAddRecord(selectedTypeId, data)}
               onCancelRecord={() => setShowNewRecordForm(false)}
               currentUser={currentUser}
+              editingRecord={editingRecord}
+              onEditRecord={(record) => setEditingRecord(record)}
+              onUpdateRecord={(data) => handleUpdateRecord(selectedTypeId, data)}
+              onCancelEdit={() => setEditingRecord(null)}
             />
           )}
         </>
@@ -225,7 +239,7 @@ export default function DocumentsV2() {
 }
 
 // Document Type Detail Component - Table View
-function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord, currentUser }) {
+function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord, currentUser, editingRecord, onEditRecord, onUpdateRecord, onCancelEdit }) {
   const isDarkMode = document.body.classList.contains('dark-mode')
 
   if (!docType) return null
@@ -555,6 +569,34 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
                             <span style={{ fontSize: '12px', color: '#6b7280' }}>No file</span>
                           )}
                           <button
+                            onClick={() => onEditRecord(record)}
+                            style={{
+                              padding: '8px 12px',
+                              background: '#fef3c7',
+                              color: '#d97706',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.background = '#fcd34d'
+                              e.target.style.color = '#b45309'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.background = '#fef3c7'
+                              e.target.style.color = '#d97706'
+                            }}
+                            title="Edit record"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
                             onClick={() => onDeleteRecord(record.id)}
                             style={{
                               padding: '8px 12px',
@@ -639,6 +681,51 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
               <NewRecordForm
                 onSubmit={onSubmitRecord}
                 onCancel={onCancelRecord}
+                currentUser={currentUser}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Edit Record Modal */}
+      {editingRecord && (
+        <>
+          {/* Modal Overlay */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px'
+            }}
+            onClick={onCancelEdit}
+          >
+            {/* Modal Content */}
+            <div
+              style={{
+                background: document.body.classList.contains('dark-mode') ? '#111827' : '#ffffff',
+                borderRadius: '14px',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                maxWidth: '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                position: 'relative'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <EditRecordForm
+                record={editingRecord}
+                onSubmit={onUpdateRecord}
+                onCancel={onCancelEdit}
                 currentUser={currentUser}
               />
             </div>
@@ -854,6 +941,218 @@ function DocumentTypeCard({ docType, isExpanded, onToggleExpand, onAddRecord, on
         </div>
       )}
     </div>
+  )
+}
+
+// Edit Record Form
+function EditRecordForm({ record, onSubmit, onCancel, currentUser }) {
+  const [formData, setFormData] = useState({
+    id: record.id,
+    name: record.name || '',
+    number: record.number || '',
+    category: record.category || '',
+    issuedOn: record.issuedOn || '',
+    expireAt: record.expireAt || '',
+    issuedBy: record.issuedBy || '',
+    downloadLink: record.downloadLink || ''
+  })
+  const isDarkMode = document.body.classList.contains('dark-mode')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!formData.name.trim()) {
+      alert('Please enter record name')
+      return
+    }
+    onSubmit(formData)
+  }
+
+  const inputStyle = {
+    padding: '10px 14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    background: isDarkMode ? '#1f2937' : '#ffffff',
+    color: isDarkMode ? '#f3f4f6' : '#1f2937',
+    transition: 'border-color 0.3s ease'
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{
+      padding: '32px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px'
+    }}>
+      {/* Modal Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '700', color: isDarkMode ? '#f3f4f6' : '#1f2937' }}>
+          ✏️ Edit Record
+        </h3>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: '#6b7280',
+            padding: '0',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Close"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Record Name - Large Input */}
+      <div>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Record Name *</label>
+        <input
+          type="text"
+          placeholder="e.g., Aadhar Card, Passport, MCA 1st Semester"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          style={{
+            ...inputStyle,
+            padding: '12px 14px',
+            fontSize: '15px',
+            fontWeight: '500',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+        />
+      </div>
+
+      {/* Grid Layout for Details */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Document Number</label>
+          <input
+            type="text"
+            placeholder="e.g., 1234-5678-9012"
+            value={formData.number}
+            onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+            style={inputStyle}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Category</label>
+          <input
+            type="text"
+            placeholder="e.g., Government, Medical"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            style={inputStyle}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          />
+        </div>
+      </div>
+
+      {/* Date Fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Issued On</label>
+          <input
+            type="date"
+            value={formData.issuedOn}
+            onChange={(e) => setFormData({ ...formData, issuedOn: e.target.value })}
+            style={inputStyle}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Expires At</label>
+          <input
+            type="date"
+            value={formData.expireAt}
+            onChange={(e) => setFormData({ ...formData, expireAt: e.target.value })}
+            style={inputStyle}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Issued By</label>
+        <input
+          type="text"
+          placeholder="e.g., Ministry of External Affairs"
+          value={formData.issuedBy}
+          onChange={(e) => setFormData({ ...formData, issuedBy: e.target.value })}
+          style={{
+            ...inputStyle,
+            padding: '12px 14px',
+            fontSize: '15px',
+            fontWeight: '500',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+        />
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+        <button
+          type="submit"
+          style={{
+            flex: 1,
+            padding: '14px 20px',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '15px',
+            transition: 'background 0.3s ease',
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+          }}
+          onMouseEnter={(e) => e.target.style.background = '#059669'}
+          onMouseLeave={(e) => e.target.style.background = '#10b981'}
+        >
+          Update Record
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            flex: 1,
+            padding: '12px 20px',
+            background: '#6b7280',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '15px',
+            transition: 'background 0.3s ease'
+          }}
+          onMouseEnter={(e) => e.target.style.background = '#4b5563'}
+          onMouseLeave={(e) => e.target.style.background = '#6b7280'}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 

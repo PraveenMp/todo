@@ -3,16 +3,15 @@ import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
-// TODO: Replace with your Firebase project configuration
-// Get these values from Firebase Console > Project Settings > General > Your apps
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyAXrdNXBaMIXG44JNqvftgYyMLb91inKLE",
-  authDomain: "onenote-6836a.firebaseapp.com",
-  projectId: "onenote-6836a",
-  storageBucket: "onenote-6836a.firebasestorage.app",
-  messagingSenderId: "418036027770",
-  appId: "1:418036027770:web:1a2ddfd87e5bda3fe246c3",
-  measurementId: "G-6BLGL5EXM1"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 }
 
 // Initialize Firebase

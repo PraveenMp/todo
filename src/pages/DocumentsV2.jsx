@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Plus, Trash2, Edit2, Download } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Trash2, Edit2, Download, Eye, EyeOff } from 'lucide-react'
 import { subscribeToUserDocuments, addDocumentType, updateDocumentRecord, deleteDocumentRecord, deleteDocumentType } from '../firebase/firestore'
 import { uploadFileToStorage } from '../firebase/storage'
 import { useAuth } from '../contexts/AuthContext'
@@ -241,6 +241,14 @@ export default function DocumentsV2() {
 // Document Type Detail Component - Table View
 function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType, onDownload, showNewRecordForm, onSubmitRecord, onCancelRecord, currentUser, editingRecord, onEditRecord, onUpdateRecord, onCancelEdit }) {
   const isDarkMode = document.body.classList.contains('dark-mode')
+  const [visibleNumbers, setVisibleNumbers] = useState({})
+
+  const toggleNumberVisibility = (recordId) => {
+    setVisibleNumbers(prev => ({
+      ...prev,
+      [recordId]: !prev[recordId]
+    }))
+  }
 
   if (!docType) return null
 
@@ -464,13 +472,38 @@ function DocumentTypeDetail({ docType, onAddRecord, onDeleteRecord, onDeleteType
                         padding: '16px',
                         color: isDarkMode ? '#e5e7eb' : '#374151',
                         fontFamily: 'monospace',
-                        fontSize: '13px',
-                        maxWidth: '150px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        fontSize: '13px'
                       }}>
-                        {record.number || '-'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            maxWidth: '100px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {record.number ? (visibleNumbers[record.id] ? record.number : '••••••••••') : '-'}
+                          </span>
+                          {record.number && (
+                            <button
+                              onClick={() => toggleNumberVisibility(record.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: isDarkMode ? '#9ca3af' : '#6b7280',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'color 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => e.target.style.color = isDarkMode ? '#d1d5db' : '#374151'}
+                              onMouseLeave={(e) => e.target.style.color = isDarkMode ? '#9ca3af' : '#6b7280'}
+                              title={visibleNumbers[record.id] ? 'Hide number' : 'Show number'}
+                            >
+                              {visibleNumbers[record.id] ? <Eye size={16} /> : <EyeOff size={16} />}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td style={{
                         padding: '16px',
@@ -1159,6 +1192,7 @@ function EditRecordForm({ record, onSubmit, onCancel, currentUser }) {
 // Record Item Component
 function RecordItem({ record, onDelete, onDownload }) {
   const isDarkMode = document.body.classList.contains('dark-mode')
+  const [showNumber, setShowNumber] = useState(false)
   const isExpired = record.expireAt && record.expireAt < new Date().toISOString().split('T')[0]
 
   return (
@@ -1214,9 +1248,29 @@ function RecordItem({ record, onDelete, onDownload }) {
                 <p style={{ margin: '0', fontSize: '12px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' }}>
                   Document Number
                 </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: isDarkMode ? '#e5e7eb' : '#374151', fontWeight: '500', fontFamily: 'monospace' }}>
-                  {record.number}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <p style={{ margin: '0', fontSize: '15px', color: isDarkMode ? '#e5e7eb' : '#374151', fontWeight: '500', fontFamily: 'monospace' }}>
+                    {showNumber ? record.number : '••••••••••'}
+                  </p>
+                  <button
+                    onClick={() => setShowNumber(!showNumber)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: isDarkMode ? '#9ca3af' : '#6b7280',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.target.style.color = isDarkMode ? '#d1d5db' : '#374151'}
+                    onMouseLeave={(e) => e.target.style.color = isDarkMode ? '#9ca3af' : '#6b7280'}
+                    title={showNumber ? 'Hide number' : 'Show number'}
+                  >
+                    {showNumber ? <Eye size={16} /> : <EyeOff size={16} />}
+                  </button>
+                </div>
               </div>
             )}
             {record.issuedOn && (

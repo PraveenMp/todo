@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { subscribeToTasks, addTask as addTaskFirebase, updateTask, deleteTask as deleteTaskFirebase, subscribeToCategories, addCategory as addCategoryFirebase, deleteCategory as deleteCategoryFirebase } from '../firebase/firestore'
 import { X, Plus, Trash2, LayoutGrid, Briefcase, Home, Folder, Star, Heart, Zap, Target, BookOpen, Code, Palette, Music, Check } from 'lucide-react'
+import '../styles/AllTasks.css'
 
 const iconOptions = {
   LayoutGrid: <LayoutGrid size={16} />,
@@ -36,7 +37,7 @@ export default function AllTasks() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [selectedIcon, setSelectedIcon] = useState('Folder')
-  const isDarkMode = document.body.classList.contains('dark-mode')
+
 
   useEffect(() => {
     if (!currentUser) return
@@ -64,7 +65,7 @@ export default function AllTasks() {
 
   const addTask = async () => {
     if (!newTask.trim() || !currentUser) return
-    
+
     try {
       const categoryId = selectedCategoryId === 'all-tasks' ? null : selectedCategoryId
       await addTaskFirebase(currentUser.uid, {
@@ -80,24 +81,24 @@ export default function AllTasks() {
 
   const addCategory = async () => {
     if (!newCategoryName.trim() || !currentUser) return
-    
+
     try {
       let baseId = newCategoryName.toLowerCase().replace(/\s+/g, '-')
       let uniqueId = baseId
       let counter = 1
-      
+
       while (categories.some(cat => cat.id === uniqueId)) {
         uniqueId = `${baseId}-${counter}`
         counter++
       }
-      
+
       const newCategory = {
         id: uniqueId,
         name: newCategoryName.trim(),
         icon: selectedIcon,
         isDefault: false
       }
-      
+
       await addCategoryFirebase(currentUser.uid, newCategory)
       setNewCategoryName('')
       setSelectedIcon('Folder')
@@ -110,7 +111,7 @@ export default function AllTasks() {
 
   const deleteCategory = async (categoryId) => {
     if (!currentUser || !confirm('Delete this category and all its tasks?')) return
-    
+
     try {
       await deleteCategoryFirebase(currentUser.uid, categoryId)
       setSelectedCategoryId('all-tasks')
@@ -122,7 +123,7 @@ export default function AllTasks() {
 
   const toggleTask = async (taskId, currentStatus) => {
     if (!currentUser) return
-    
+
     try {
       await updateTask(currentUser.uid, taskId, { completed: !currentStatus })
     } catch (error) {
@@ -132,7 +133,7 @@ export default function AllTasks() {
 
   const deleteTask = async (taskId) => {
     if (!currentUser || !confirm('Delete this task?')) return
-    
+
     try {
       await deleteTaskFirebase(currentUser.uid, taskId)
     } catch (error) {
@@ -141,42 +142,41 @@ export default function AllTasks() {
   }
 
   // Filter tasks based on selected category
-  const filteredTasks = selectedCategoryId === 'all-tasks' 
-    ? tasks 
+  const filteredTasks = selectedCategoryId === 'all-tasks'
+    ? tasks
     : tasks.filter(t => t.category === selectedCategoryId)
 
-  const activeTasks = filteredTasks.filter(t => !t.completed)
-  const completedTasks = filteredTasks.filter(t => t.completed)
+  // Sort tasks by status priority: in-progress > new > done
+  const sortTasksByStatus = (tasksToSort) => {
+    const statusPriority = {
+      'in-progress': 1,
+      'new': 2,
+      'done': 3
+    }
+
+    return [...tasksToSort].sort((a, b) => {
+      const priorityA = statusPriority[a.status] || 999
+      const priorityB = statusPriority[b.status] || 999
+      return priorityA - priorityB
+    })
+  }
+
+  const sortedTasks = sortTasksByStatus(filteredTasks)
+  const activeTasks = sortedTasks.filter(t => !t.completed)
+  const completedTasks = sortedTasks.filter(t => t.completed)
   const selectedCategory = categories.find(c => c.id === selectedCategoryId)
 
   return (
-    <main className="main" style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ marginBottom: '30px' }}>
-        <h2 className="title" style={{ marginBottom: '8px' }}>My Tasks</h2>
-        <p style={{ color: '#6b7280', marginBottom: '0' }}>Organize your tasks by categories and track progress</p>
+    <main className="all-tasks-main">
+      <div className="page-header">
+        <h2 className="title page-title">My Tasks</h2>
+        <p className="page-subtitle">Organize your tasks by categories and track progress</p>
       </div>
 
       {/* Add New Category Button */}
       <button
         onClick={() => setShowNewCategoryForm(!showNewCategoryForm)}
-        style={{
-          padding: '14px 24px',
-          background: '#10b981',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          fontSize: '15px',
-          fontWeight: '600',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-          transition: 'all 0.3s ease'
-        }}
-        onMouseEnter={(e) => e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)'}
-        onMouseLeave={(e) => e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)'}
+        className="add-category-btn"
       >
         <Plus size={20} />
         Add Category
@@ -184,63 +184,28 @@ export default function AllTasks() {
 
       {/* New Category Form */}
       {showNewCategoryForm && (
-        <div style={{
-          marginBottom: '30px',
-          padding: '24px',
-          background: isDarkMode ? '#111827' : '#f9fafb',
-          border: '2px solid #e5e7eb',
-          borderRadius: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px'
-        }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: isDarkMode ? '#f3f4f6' : '#1f2937' }}>Create New Category</h3>
-          
+        <div className="new-category-form">
+          <h3 className="form-title">Create New Category</h3>
+
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Category Name *</label>
+            <label className="form-label">Category Name *</label>
             <input
               type="text"
               placeholder="e.g., Shopping, Learning, Health"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '15px',
-                fontFamily: 'inherit',
-                background: isDarkMode ? '#1f2937' : '#ffffff',
-                color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                boxSizing: 'border-box',
-                transition: 'border-color 0.3s ease'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              className="form-input"
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase' }}>Select Icon</label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <label className="form-label">Select Icon</label>
+            <div className="icon-grid">
               {Object.keys(iconOptions).map(iconName => (
                 <button
                   key={iconName}
                   onClick={() => setSelectedIcon(iconName)}
-                  style={{
-                    padding: '12px',
-                    border: selectedIcon === iconName ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    background: selectedIcon === iconName 
-                      ? isDarkMode ? '#1e40af' : '#dbeafe'
-                      : isDarkMode ? '#1f2937' : '#ffffff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: selectedIcon === iconName ? '#3b82f6' : isDarkMode ? '#e5e7eb' : '#374151',
-                    transition: 'all 0.3s ease'
-                  }}
+                  className={`icon-btn ${selectedIcon === iconName ? 'selected' : ''}`}
                   title={iconName}
                 >
                   {iconOptions[iconName]}
@@ -249,24 +214,10 @@ export default function AllTasks() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="form-actions">
             <button
               onClick={addCategory}
-              style={{
-                flex: 1,
-                padding: '12px 20px',
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '15px',
-                transition: 'background 0.3s ease',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-              }}
-              onMouseEnter={(e) => e.target.style.background = '#059669'}
-              onMouseLeave={(e) => e.target.style.background = '#10b981'}
+              className="btn-primary"
             >
               Create Category
             </button>
@@ -276,20 +227,7 @@ export default function AllTasks() {
                 setNewCategoryName('')
                 setSelectedIcon('Folder')
               }}
-              style={{
-                flex: 1,
-                padding: '12px 20px',
-                background: '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '15px',
-                transition: 'background 0.3s ease'
-              }}
-              onMouseEnter={(e) => e.target.style.background = '#4b5563'}
-              onMouseLeave={(e) => e.target.style.background = '#6b7280'}
+              className="btn-secondary"
             >
               Cancel
             </button>
@@ -300,50 +238,12 @@ export default function AllTasks() {
       {/* Category Tabs */}
       {categories.length > 0 && (
         <>
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '24px',
-            overflowX: 'auto',
-            paddingBottom: '12px',
-            borderBottom: `2px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`
-          }}>
+          <div className="category-tabs">
             {categories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategoryId(cat.id)}
-                style={{
-                  padding: '12px 20px',
-                  background: selectedCategoryId === cat.id 
-                    ? '#3b82f6' 
-                    : isDarkMode ? '#1f2937' : '#f3f4f6',
-                  color: selectedCategoryId === cat.id 
-                    ? 'white' 
-                    : isDarkMode ? '#e5e7eb' : '#374151',
-                  border: selectedCategoryId === cat.id 
-                    ? '2px solid #3b82f6' 
-                    : `2px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: selectedCategoryId === cat.id ? '700' : '600',
-                  fontSize: '14px',
-                  transition: 'all 0.3s ease',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedCategoryId !== cat.id) {
-                    e.target.style.background = isDarkMode ? '#374151' : '#e5e7eb'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedCategoryId !== cat.id) {
-                    e.target.style.background = isDarkMode ? '#1f2937' : '#f3f4f6'
-                  }
-                }}
+                className={`category-tab ${selectedCategoryId === cat.id ? 'active' : ''}`}
               >
                 {iconOptions[cat.icon]}
                 <span>{cat.name}</span>
@@ -353,74 +253,28 @@ export default function AllTasks() {
 
           {/* Selected Category Content */}
           {selectedCategory && (
-            <div style={{
-              background: isDarkMode ? '#1f2937' : '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
-            }}>
+            <div className="category-content">
               {/* Header Section */}
-              <div style={{
-                padding: '24px',
-                background: isDarkMode ? '#111827' : '#f9fafb',
-                borderBottom: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '16px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    fontSize: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
+              <div className="category-header">
+                <div className="category-info">
+                  <div className="category-icon">
                     {iconOptions[selectedCategory.icon]}
                   </div>
                   <div>
-                    <h3 style={{ 
-                      margin: '0 0 4px 0', 
-                      fontSize: '24px', 
-                      fontWeight: '700',
-                      color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                    }}>
+                    <h3 className="category-title">
                       {selectedCategory.name}
                     </h3>
-                    <p style={{ margin: '0', fontSize: '14px', color: '#6b7280' }}>
+                    <p className="category-stats">
                       {activeTasks.length} active • {completedTasks.length} completed
                     </p>
                   </div>
                 </div>
 
                 {/* Add Task & Delete Category Buttons */}
-                <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+                <div className="header-actions">
                   <button
                     onClick={() => setShowAddTaskModal(true)}
-                    style={{
-                      padding: '12px 20px',
-                      background: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = '#2563eb'
-                      e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = '#3b82f6'
-                      e.target.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)'
-                    }}
+                    className="btn-add-task"
                   >
                     <Plus size={18} />
                     Add Task
@@ -428,28 +282,7 @@ export default function AllTasks() {
                   {!selectedCategory.isDefault && (
                     <button
                       onClick={() => deleteCategory(selectedCategory.id)}
-                      style={{
-                        padding: '12px 16px',
-                        background: '#fee2e2',
-                        color: '#dc2626',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = '#fecaca'
-                        e.target.style.color = '#991b1b'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = '#fee2e2'
-                        e.target.style.color = '#dc2626'
-                      }}
+                      className="btn-delete-category"
                       title="Delete category and all its tasks"
                     >
                       <Trash2 size={18} />
@@ -460,196 +293,71 @@ export default function AllTasks() {
               </div>
 
               {/* Tasks Table */}
-              <div style={{ padding: '24px' }}>
+              <div className="tasks-container">
                 {loading ? (
-                  <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading tasks...</p>
+                  <p className="loading-text">Loading tasks...</p>
                 ) : activeTasks.length === 0 && completedTasks.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '60px 20px',
-                    color: '#6b7280'
-                  }}>
-                    <p style={{ fontSize: '16px', fontWeight: '500' }}>No tasks yet</p>
-                    <p style={{ fontSize: '14px', marginTop: '8px' }}>Add your first task to get started!</p>
+                  <div className="empty-state">
+                    <p className="empty-title">No tasks yet</p>
+                    <p className="empty-subtitle">Add your first task to get started!</p>
                   </div>
                 ) : (
                   <>
                     {/* Active Tasks Table */}
                     {activeTasks.length > 0 && (
-                      <div style={{ marginBottom: '32px' }}>
-                        <h4 style={{
-                          margin: '0 0 16px 0',
-                          fontSize: '16px',
-                          fontWeight: '700',
-                          color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                        }}>
+                      <div className="tasks-section">
+                        <h4 className="section-title">
                           Active Tasks ({activeTasks.length})
                         </h4>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            fontSize: '14px'
-                          }}>
+                        <div className="table-responsive">
+                          <table className="tasks-table">
                             <thead>
-                              <tr style={{
-                                background: isDarkMode ? '#111827' : '#f3f4f6',
-                                borderBottom: '2px solid #e5e7eb'
-                              }}>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Task</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Priority</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Task Status</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Due Date</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'center',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Actions</th>
+                              <tr className="table-header">
+                                <th className="th-cell">Task</th>
+                                <th className="th-cell">Priority</th>
+                                <th className="th-cell">Task Status</th>
+                                <th className="th-cell">Due Date</th>
+                                <th className="th-cell th-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {activeTasks.map((task, idx) => (
                                 <tr
                                   key={task.id}
-                                  style={{
-                                    borderBottom: '1px solid #e5e7eb',
-                                    background: idx % 2 === 0 
-                                      ? isDarkMode ? '#1f2937' : '#ffffff'
-                                      : isDarkMode ? '#111827' : '#f9fafb',
-                                    transition: 'all 0.3s ease'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = isDarkMode ? '#374151' : '#eff6ff'
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = idx % 2 === 0 
-                                      ? isDarkMode ? '#1f2937' : '#ffffff'
-                                      : isDarkMode ? '#111827' : '#f9fafb'
-                                  }}
+                                  className="task-row"
                                 >
-                                  <td style={{
-                                    padding: '16px',
-                                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                                    fontWeight: '500'
-                                  }}>
+                                  <td className="td-cell task-text">
                                     {task.text}
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                                  }}>
+                                  <td className="td-cell">
                                     <select
                                       value={task.priority}
                                       onChange={(e) => updateTask(currentUser.uid, task.id, { priority: e.target.value })}
-                                      style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid ' + (isDarkMode ? '#4b5563' : '#d1d5db'),
-                                        background: isDarkMode ? '#2d3748' : '#ffffff',
-                                        color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: '500'
-                                      }}
+                                      className="status-select"
                                     >
                                       <option value="low">🟢 Low</option>
                                       <option value="medium">🟡 Medium</option>
                                       <option value="high">🔴 High</option>
                                     </select>
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                                  }}>
+                                  <td className="td-cell">
                                     <select
                                       value={task.status}
                                       onChange={(e) => updateTask(currentUser.uid, task.id, { status: e.target.value })}
-                                      style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid ' + (isDarkMode ? '#4b5563' : '#d1d5db'),
-                                        background: isDarkMode ? '#2d3748' : '#ffffff',
-                                        color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: '500'
-                                      }}
+                                      className="status-select"
                                     >
                                       <option value="new">📝 New</option>
                                       <option value="in-progress">⏳ In Progress</option>
                                       <option value="done">✅ Done</option>
                                     </select>
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                                  }}>
+                                  <td className="td-cell">
                                     {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    textAlign: 'center'
-                                  }}>
+                                  <td className="td-cell th-center">
                                     <button
                                       onClick={() => deleteTask(task.id)}
-                                      style={{
-                                        padding: '8px 12px',
-                                        background: '#fee2e2',
-                                        color: '#dc2626',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.3s ease'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.target.style.background = '#fecaca'
-                                        e.target.style.color = '#991b1b'
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.target.style.background = '#fee2e2'
-                                        e.target.style.color = '#dc2626'
-                                      }}
+                                      className="btn-delete-task"
                                       title="Delete task"
                                     >
                                       <Trash2 size={14} />
@@ -666,184 +374,58 @@ export default function AllTasks() {
                     {/* Completed Tasks Table */}
                     {completedTasks.length > 0 && (
                       <div>
-                        <h4 style={{
-                          margin: '0 0 16px 0',
-                          fontSize: '16px',
-                          fontWeight: '700',
-                          color: isDarkMode ? '#f3f4f6' : '#1f2937'
-                        }}>
+                        <h4 className="section-title">
                           Completed Tasks ({completedTasks.length})
                         </h4>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            fontSize: '14px'
-                          }}>
+                        <div className="table-responsive">
+                          <table className="tasks-table">
                             <thead>
-                              <tr style={{
-                                background: isDarkMode ? '#111827' : '#f3f4f6',
-                                borderBottom: '2px solid #e5e7eb'
-                              }}>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Task</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Priority</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Task Status</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'left',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Due Date</th>
-                                <th style={{
-                                  padding: '16px',
-                                  textAlign: 'center',
-                                  fontWeight: '700',
-                                  color: '#6b7280',
-                                  fontSize: '12px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px'
-                                }}>Actions</th>
+                              <tr className="table-header">
+                                <th className="th-cell">Task</th>
+                                <th className="th-cell">Priority</th>
+                                <th className="th-cell">Task Status</th>
+                                <th className="th-cell">Due Date</th>
+                                <th className="th-cell th-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {completedTasks.map((task, idx) => (
                                 <tr
                                   key={task.id}
-                                  style={{
-                                    borderBottom: '1px solid #e5e7eb',
-                                    background: idx % 2 === 0 
-                                      ? isDarkMode ? '#1f2937' : '#ffffff'
-                                      : isDarkMode ? '#111827' : '#f9fafb',
-                                    transition: 'all 0.3s ease'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = isDarkMode ? '#374151' : '#eff6ff'
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = idx % 2 === 0 
-                                      ? isDarkMode ? '#1f2937' : '#ffffff'
-                                      : isDarkMode ? '#111827' : '#f9fafb'
-                                  }}
+                                  className="task-row"
                                 >
-                                  <td style={{
-                                    padding: '16px',
-                                    color: '#6b7280',
-                                    textDecoration: 'line-through'
-                                  }}>
+                                  <td className="td-cell completed-text">
                                     {task.text}
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: '#6b7280',
-                                    textDecoration: 'line-through'
-                                  }}>
+                                  <td className="td-cell completed-text">
                                     <select
                                       value={task.priority}
                                       onChange={(e) => updateTask(currentUser.uid, task.id, { priority: e.target.value })}
-                                      style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid ' + (isDarkMode ? '#4b5563' : '#d1d5db'),
-                                        background: isDarkMode ? '#2d3748' : '#ffffff',
-                                        color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        textDecoration: 'line-through'
-                                      }}
+                                      className="status-select completed-text"
                                     >
                                       <option value="low">🟢 Low</option>
                                       <option value="medium">🟡 Medium</option>
                                       <option value="high">🔴 High</option>
                                     </select>
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: '#6b7280',
-                                    textDecoration: 'line-through'
-                                  }}>
+                                  <td className="td-cell completed-text">
                                     <select
                                       value={task.status}
                                       onChange={(e) => updateTask(currentUser.uid, task.id, { status: e.target.value })}
-                                      style={{
-                                        padding: '6px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid ' + (isDarkMode ? '#4b5563' : '#d1d5db'),
-                                        background: isDarkMode ? '#2d3748' : '#ffffff',
-                                        color: isDarkMode ? '#f3f4f6' : '#1f2937',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        textDecoration: 'line-through'
-                                      }}
+                                      className="status-select completed-text"
                                     >
                                       <option value="new">📝 New</option>
                                       <option value="in-progress">⏳ In Progress</option>
                                       <option value="done">✅ Done</option>
                                     </select>
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    color: '#6b7280',
-                                    textDecoration: 'line-through'
-                                  }}>
+                                  <td className="td-cell completed-text">
                                     {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                   </td>
-                                  <td style={{
-                                    padding: '16px',
-                                    textAlign: 'center'
-                                  }}>
+                                  <td className="td-cell th-center">
                                     <button
                                       onClick={() => deleteTask(task.id)}
-                                      style={{
-                                        padding: '8px 12px',
-                                        background: '#fee2e2',
-                                        color: '#dc2626',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.3s ease'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.target.style.background = '#fecaca'
-                                        e.target.style.color = '#991b1b'
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.target.style.background = '#fee2e2'
-                                        e.target.style.color = '#dc2626'
-                                      }}
+                                      className="btn-delete-task"
                                       title="Delete task"
                                     >
                                       <Trash2 size={14} />
@@ -868,34 +450,8 @@ export default function AllTasks() {
       {showAddTaskModal && (
         <>
           {/* Modal Overlay */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: '20px'
-            }}
-            onClick={() => setShowAddTaskModal(false)}
-          >
-            {/* Modal Content */}
-            <div
-              style={{
-                background: isDarkMode ? '#111827' : '#ffffff',
-                borderRadius: '14px',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-                maxWidth: '500px',
-                width: '100%',
-                overflow: 'hidden'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="modal-overlay">
+            <div className="modal-container">
               <AddTaskModal
                 categoryId={selectedCategoryId}
                 categoryName={selectedCategory?.name || 'All Tasks'}
@@ -921,7 +477,6 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState('medium')
   const [status, setStatus] = useState('new')
-  const isDarkMode = document.body.classList.contains('dark-mode')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -946,53 +501,17 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
     }
   }
 
-  const inputStyle = {
-    padding: '10px 14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    background: isDarkMode ? '#1f2937' : '#ffffff',
-    color: isDarkMode ? '#f3f4f6' : '#1f2937',
-    transition: 'border-color 0.3s ease'
-  }
-
-  const selectStyle = {
-    ...inputStyle,
-    width: '100%',
-    boxSizing: 'border-box'
-  }
-
   return (
-    <form onSubmit={handleSubmit} style={{
-      padding: '32px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px',
-      maxHeight: '90vh',
-      overflowY: 'auto'
-    }}>
+    <form onSubmit={handleSubmit} className="modal-form">
       {/* Modal Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '700', color: isDarkMode ? '#f3f4f6' : '#1f2937' }}>
+      <div className="modal-header">
+        <h3 className="modal-title">
           ✓ Add New Task
         </h3>
         <button
           type="button"
           onClick={onCancel}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer',
-            color: '#6b7280',
-            padding: '0',
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className="btn-close"
           title="Close"
         >
           ✕
@@ -1000,86 +519,55 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
       </div>
 
       {/* Category Info */}
-      <div style={{
-        padding: '12px 16px',
-        background: isDarkMode ? '#1f2937' : '#f0fdf4',
-        border: '1px solid #86efac',
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: isDarkMode ? '#e5e7eb' : '#374151'
-      }}>
+      <div className="category-badge">
         📁 <strong>Category:</strong> {categoryName}
       </div>
 
       {/* Task Title (Required) */}
       <div>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Task Title *</label>
+        <label className="form-label">Task Title *</label>
         <input
           type="text"
           placeholder="Enter task title..."
           value={taskText}
           onChange={(e) => setTaskText(e.target.value)}
-          style={{
-            ...inputStyle,
-            width: '100%',
-            boxSizing: 'border-box'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          className="form-input"
           autoFocus
         />
       </div>
 
       {/* Description */}
       <div>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Description</label>
+        <label className="form-label">Description</label>
         <textarea
           placeholder="Enter task details (optional)..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-            background: isDarkMode ? '#1f2937' : '#ffffff',
-            color: isDarkMode ? '#f3f4f6' : '#1f2937',
-            boxSizing: 'border-box',
-            resize: 'vertical',
-            transition: 'border-color 0.3s ease'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-          onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+          className="form-textarea"
         />
       </div>
 
       {/* Grid: Due Date, Priority, Status */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+      <div className="form-grid">
         {/* Due Date */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Due Date</label>
+          <label className="form-label">Due Date</label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            className="form-input"
           />
         </div>
 
         {/* Priority */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Priority</label>
+          <label className="form-label">Priority</label>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            className="form-input"
           >
             <option value="low">🟢 Low</option>
             <option value="medium">🟡 Medium</option>
@@ -1089,13 +577,11 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
 
         {/* Status */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Status</label>
+          <label className="form-label">Status</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-            onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            className="form-input"
           >
             <option value="new">📝 New</option>
             <option value="in-progress">⏳ In Progress</option>
@@ -1105,50 +591,17 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+      <div className="form-actions">
         <button
           type="submit"
-          style={{
-            flex: 1,
-            padding: '14px 20px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '15px',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = '#059669'
-            e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)'
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = '#10b981'
-            e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)'
-          }}
+          className="btn-submit"
         >
           Add Task
         </button>
         <button
           type="button"
           onClick={onCancel}
-          style={{
-            flex: 1,
-            padding: '14px 20px',
-            background: '#e5e7eb',
-            color: '#374151',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '15px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => e.target.style.background = '#d1d5db'}
-          onMouseLeave={(e) => e.target.style.background = '#e5e7eb'}
+          className="btn-cancel"
         >
           Cancel
         </button>

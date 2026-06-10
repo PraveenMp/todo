@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { subscribeToTasks, addTask as addTaskFirebase, updateTask, deleteTask as deleteTaskFirebase, subscribeToCategories, addCategory as addCategoryFirebase, deleteCategory as deleteCategoryFirebase } from '../firebase/firestore'
-import { X, Plus, Trash2, LayoutGrid, Briefcase, Home, Folder, Star, Heart, Zap, Target, BookOpen, Code, Palette, Music, Check } from 'lucide-react'
+import { X, Plus, Trash2, LayoutGrid, Briefcase, Home, Folder, Star, Heart, Zap, Target, BookOpen, Code, Palette, Music, Check, ChevronDown } from 'lucide-react'
 import '../styles/AllTasks.css'
 
 const iconOptions = {
@@ -37,6 +37,9 @@ export default function AllTasks() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [selectedIcon, setSelectedIcon] = useState('Folder')
+  const [draggedTask, setDraggedTask] = useState(null)
+  const [dragOverColumn, setDragOverColumn] = useState(null)
+  const [expandedTasks, setExpandedTasks] = useState(new Set())
 
 
   useEffect(() => {
@@ -141,6 +144,79 @@ export default function AllTasks() {
     }
   }
 
+  // Drag and Drop Handlers
+  const handleDragStart = (e, task) => {
+    setDraggedTask(task)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/html', e.target)
+    // Add a slight delay to allow the drag image to be created
+    setTimeout(() => {
+      e.target.style.opacity = '0.5'
+    }, 0)
+  }
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1'
+    setDraggedTask(null)
+    setDragOverColumn(null)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDragEnter = (columnStatus) => {
+    setDragOverColumn(columnStatus)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null)
+  }
+
+  const handleDrop = async (e, targetStatus) => {
+    e.preventDefault()
+    setDragOverColumn(null)
+
+    if (!draggedTask || !currentUser) return
+
+    // Determine the new status and completed state
+    let newStatus = targetStatus
+    let newCompleted = false
+
+    if (targetStatus === 'completed') {
+      newStatus = 'done'
+      newCompleted = true
+    }
+
+    // Only update if the status actually changed
+    if (draggedTask.status !== newStatus || draggedTask.completed !== newCompleted) {
+      try {
+        await updateTask(currentUser.uid, draggedTask.id, {
+          status: newStatus,
+          completed: newCompleted
+        })
+      } catch (error) {
+        console.error('Error updating task:', error)
+      }
+    }
+
+    setDraggedTask(null)
+  }
+
+  // Toggle task card expansion
+  const toggleTaskExpand = (taskId) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId)
+      } else {
+        newSet.add(taskId)
+      }
+      return newSet
+    })
+  }
+
   // Filter tasks based on selected category
   const filteredTasks = selectedCategoryId === 'all-tasks'
     ? tasks
@@ -168,11 +244,6 @@ export default function AllTasks() {
 
   return (
     <main className="all-tasks-main">
-      <div className="page-header">
-        <h2 className="title page-title">My Tasks</h2>
-        <p className="page-subtitle">Organize your tasks by categories and track progress</p>
-      </div>
-
       {/* Add New Category Button */}
       <button
         onClick={() => setShowNewCategoryForm(!showNewCategoryForm)}
@@ -237,7 +308,7 @@ export default function AllTasks() {
 
       {/* Category Tabs */}
       {categories.length > 0 && (
-        <>
+        <div className="categories-and-content-wrapper">
           <div className="category-tabs">
             {categories.map(cat => (
               <button
@@ -292,158 +363,153 @@ export default function AllTasks() {
                 </div>
               </div>
 
-              {/* Tasks Table */}
+              {/* Tasks Kanban Board */}
               <div className="tasks-container">
                 {loading ? (
                   <p className="loading-text">Loading tasks...</p>
-                ) : activeTasks.length === 0 && completedTasks.length === 0 ? (
-                  <div className="empty-state">
-                    <p className="empty-title">No tasks yet</p>
-                    <p className="empty-subtitle">Add your first task to get started!</p>
-                  </div>
                 ) : (
-                  <>
-                    {/* Active Tasks Table */}
-                    {activeTasks.length > 0 && (
-                      <div className="tasks-section">
-                        <h4 className="section-title">
-                          Active Tasks ({activeTasks.length})
-                        </h4>
-                        <div className="table-responsive">
-                          <table className="tasks-table">
-                            <thead>
-                              <tr className="table-header">
-                                <th className="th-cell">Task</th>
-                                <th className="th-cell">Priority</th>
-                                <th className="th-cell">Task Status</th>
-                                <th className="th-cell">Due Date</th>
-                                <th className="th-cell th-center">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {activeTasks.map((task, idx) => (
-                                <tr
-                                  key={task.id}
-                                  className="task-row"
+                  <div className="kanban-board">
+                    {/* New Tasks Column */}
+                    <div className={`kanban-column ${dragOverColumn === 'new' ? 'drag-over' : ''}`} onDragOver={handleDragOver} onDragEnter={() => handleDragEnter('new')} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, 'new')}>
+                      <h4>📝 New Task ({filteredTasks.filter(t => t.status === 'new' && !t.completed).length})</h4>
+                      {filteredTasks.filter(t => t.status === 'new' && !t.completed).length === 0 ? (
+                        <div className="kanban-empty">No new tasks</div>
+                      ) : (
+                        filteredTasks
+                          .filter(t => t.status === 'new' && !t.completed)
+                          .map(task => (
+                            <div
+                              key={task.id}
+                              className={`task-card priority-${task.priority || 'medium'} ${expandedTasks.has(task.id) ? 'expanded' : ''}`} draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={handleDragEnd}>
+                              <div className="task-card-title">{task.text}</div>
+                              {expandedTasks.has(task.id) && task.description && (
+                                <div className="task-card-description">
+                                  {task.description}
+                                </div>
+                              )}
+                              <div className="task-card-footer">
+                                <span className="task-card-due-date">
+                                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
+                                </span>
+                                {task.description && (
+                                  <button
+                                    onClick={() => toggleTaskExpand(task.id)}
+                                    className="task-card-more"
+                                    title="Show details"
+                                  >
+                                    <ChevronDown size={14} style={{ transform: expandedTasks.has(task.id) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => deleteTask(task.id)}
+                                  className="task-card-delete"
+                                  title="Delete task"
                                 >
-                                  <td className="td-cell task-text">
-                                    {task.text}
-                                  </td>
-                                  <td className="td-cell">
-                                    <select
-                                      value={task.priority}
-                                      onChange={(e) => updateTask(currentUser.uid, task.id, { priority: e.target.value })}
-                                      className="status-select"
-                                    >
-                                      <option value="low">🟢 Low</option>
-                                      <option value="medium">🟡 Medium</option>
-                                      <option value="high">🔴 High</option>
-                                    </select>
-                                  </td>
-                                  <td className="td-cell">
-                                    <select
-                                      value={task.status}
-                                      onChange={(e) => updateTask(currentUser.uid, task.id, { status: e.target.value })}
-                                      className="status-select"
-                                    >
-                                      <option value="new">📝 New</option>
-                                      <option value="in-progress">⏳ In Progress</option>
-                                      <option value="done">✅ Done</option>
-                                    </select>
-                                  </td>
-                                  <td className="td-cell">
-                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
-                                  </td>
-                                  <td className="td-cell th-center">
-                                    <button
-                                      onClick={() => deleteTask(task.id)}
-                                      className="btn-delete-task"
-                                      title="Delete task"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
 
-                    {/* Completed Tasks Table */}
-                    {completedTasks.length > 0 && (
-                      <div>
-                        <h4 className="section-title">
-                          Completed Tasks ({completedTasks.length})
-                        </h4>
-                        <div className="table-responsive">
-                          <table className="tasks-table">
-                            <thead>
-                              <tr className="table-header">
-                                <th className="th-cell">Task</th>
-                                <th className="th-cell">Priority</th>
-                                <th className="th-cell">Task Status</th>
-                                <th className="th-cell">Due Date</th>
-                                <th className="th-cell th-center">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {completedTasks.map((task, idx) => (
-                                <tr
-                                  key={task.id}
-                                  className="task-row"
+                    {/* In Progress Column */}
+                    <div className={`kanban-column ${dragOverColumn === 'in-progress' ? 'drag-over' : ''}`} onDragOver={handleDragOver} onDragEnter={() => handleDragEnter('in-progress')} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, 'in-progress')}>
+                      <h4>⏳ In Progress ({filteredTasks.filter(t => t.status === 'in-progress' && !t.completed).length})</h4>
+                      {filteredTasks.filter(t => t.status === 'in-progress' && !t.completed).length === 0 ? (
+                        <div className="kanban-empty">No tasks in progress</div>
+                      ) : (
+                        filteredTasks
+                          .filter(t => t.status === 'in-progress' && !t.completed)
+                          .map(task => (
+                            <div
+                              key={task.id}
+                              className={`task-card priority-${task.priority || 'medium'} ${expandedTasks.has(task.id) ? 'expanded' : ''}`} draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={handleDragEnd}>
+                              <div className="task-card-title">{task.text}</div>
+                              {expandedTasks.has(task.id) && task.description && (
+                                <div className="task-card-description">
+                                  {task.description}
+                                </div>
+                              )}
+                              <div className="task-card-footer">
+                                <span className="task-card-due-date">
+                                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
+                                </span>
+                                {task.description && (
+                                  <button
+                                    onClick={() => toggleTaskExpand(task.id)}
+                                    className="task-card-more"
+                                    title="Show details"
+                                  >
+                                    <ChevronDown size={14} style={{ transform: expandedTasks.has(task.id) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => deleteTask(task.id)}
+                                  className="task-card-delete"
+                                  title="Delete task"
                                 >
-                                  <td className="td-cell completed-text">
-                                    {task.text}
-                                  </td>
-                                  <td className="td-cell completed-text">
-                                    <select
-                                      value={task.priority}
-                                      onChange={(e) => updateTask(currentUser.uid, task.id, { priority: e.target.value })}
-                                      className="status-select completed-text"
-                                    >
-                                      <option value="low">🟢 Low</option>
-                                      <option value="medium">🟡 Medium</option>
-                                      <option value="high">🔴 High</option>
-                                    </select>
-                                  </td>
-                                  <td className="td-cell completed-text">
-                                    <select
-                                      value={task.status}
-                                      onChange={(e) => updateTask(currentUser.uid, task.id, { status: e.target.value })}
-                                      className="status-select completed-text"
-                                    >
-                                      <option value="new">📝 New</option>
-                                      <option value="in-progress">⏳ In Progress</option>
-                                      <option value="done">✅ Done</option>
-                                    </select>
-                                  </td>
-                                  <td className="td-cell completed-text">
-                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
-                                  </td>
-                                  <td className="td-cell th-center">
-                                    <button
-                                      onClick={() => deleteTask(task.id)}
-                                      className="btn-delete-task"
-                                      title="Delete task"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+
+                    {/* Completed Column */}
+                    <div className={`kanban-column ${dragOverColumn === 'completed' ? 'drag-over' : ''}`} onDragOver={handleDragOver} onDragEnter={() => handleDragEnter('completed')} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, 'completed')}>
+                      <h4>✅ Completed ({filteredTasks.filter(t => t.completed || t.status === 'done').length})</h4>
+                      {filteredTasks.filter(t => t.completed || t.status === 'done').length === 0 ? (
+                        <div className="kanban-empty">No completed tasks</div>
+                      ) : (
+                        filteredTasks
+                          .filter(t => t.completed || t.status === 'done')
+                          .map(task => (
+                            <div
+                              key={task.id}
+                              className={`task-card priority-${task.priority || 'medium'} ${expandedTasks.has(task.id) ? 'expanded' : ''}`}
+                              style={{ opacity: 0.6, color: '#9ca3af' }}
+                            >
+                              <div className="task-card-title" style={{ textDecoration: 'line-through', color: '#9ca3af' }}>
+                                {task.text}
+                              </div>
+                              {expandedTasks.has(task.id) && task.description && (
+                                <div className="task-card-description">
+                                  {task.description}
+                                </div>
+                              )}
+                              <div className="task-card-footer">
+                                <span className="task-card-due-date">
+                                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
+                                </span>
+                                {task.description && (
+                                  <button
+                                    onClick={() => toggleTaskExpand(task.id)}
+                                    className="task-card-more"
+                                    title="Show details"
+                                  >
+                                    <ChevronDown size={14} style={{ transform: expandedTasks.has(task.id) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => deleteTask(task.id)}
+                                  className="task-card-delete"
+                                  title="Delete task"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Add Task Modal */}
@@ -609,3 +675,4 @@ function AddTaskModal({ categoryId, categoryName, onSubmit, onCancel }) {
     </form>
   )
 }
+

@@ -96,13 +96,13 @@ export default function Home() {
             <p>No active home tasks</p>
           ) : (
             activeTasks.map(task => (
-              <div key={task.id} className="task">
+              <div key={task.id} className={`task ${task.completed ? 'task-completed-row' : ''}`}>
                 <input
                   type="checkbox"
                   checked={task.completed}
                   onChange={() => toggleTask(task.id, task.completed)}
                 />
-                <span>{task.text}</span>
+                <span>{task.completed ? task.text : task.text}</span>
               </div>
             ))
           )}
@@ -115,7 +115,7 @@ export default function Home() {
           <p>No completed home tasks</p>
         ) : (
           completedTasks.map(task => (
-            <div key={task.id} className="task" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={task.id} className="task task-completed-row" style={{ justifyContent: 'space-between', alignItems: 'center', opacity: 0.7 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span className="task-completed">{task.text}</span>
                 {task.category && <span className="badge">{task.category}</span>}

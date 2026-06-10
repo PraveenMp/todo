@@ -27,7 +27,7 @@ body {
 
 .sidebar {
   width: 260px; background: white; border-right: 1px solid #ddd;
-  padding: 24px;
+  padding: 5px 10px;
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -103,6 +103,17 @@ body {
 }
 .task:last-child { border-bottom: none; }
 .task-completed { text-decoration: line-through; color: #999; }
+.task-completed-row {
+  opacity: 0.6;
+  color: #9ca3af;
+}
+.task-completed-row input[type="checkbox"] {
+  opacity: 0.5;
+}
+.task-completed-row span {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
 .badge {
   font-size: 10px; padding: 4px 8px; background: #eee; border-radius: 12px;
 }
@@ -198,6 +209,15 @@ body.dark-mode .task {
 }
 
 body.dark-mode .task-completed {
+  color: #6b7280;
+}
+
+body.dark-mode .task-completed-row {
+  opacity: 0.5;
+  color: #6b7280;
+}
+
+body.dark-mode .task-completed-row span {
   color: #6b7280;
 }
 

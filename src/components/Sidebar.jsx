@@ -59,9 +59,6 @@ export default function Sidebar({ darkMode, setDarkMode }) {
 
       <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div>
-          <h1>TodoApp</h1>
-          <p>Your Productivity Partner</p>
-
           {currentUser && (
             <div style={{
               marginTop: '16px',

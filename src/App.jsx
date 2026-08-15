@@ -12,6 +12,7 @@ import CategoryPage from './pages/CategoryPage'
 import ManageCategories from './pages/ManageCategories'
 import DocumentsV2 from './pages/DocumentsV2'
 import Journal from './pages/Journal'
+import Habits from './pages/Habits'
 
 function AppContent() {
   const { darkMode, setDarkMode } = useAuth()
@@ -28,6 +29,7 @@ function AppContent() {
         <Route path="/category/:categoryId" element={<ProtectedRoute><CategoryPage /></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><DocumentsV2 /></ProtectedRoute>} />
         <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
+        <Route path="/habits" element={<ProtectedRoute><Habits /></ProtectedRoute>} />
       </Routes>
     </div>
   )

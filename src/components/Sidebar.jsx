@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Briefcase, Home, Folder, FileText, CreditCard, Menu, X, Moon, Sun, LogOut, User, CheckSquare, Book } from 'lucide-react'
+import { LayoutGrid, Briefcase, Home, Folder, FileText, CreditCard, Menu, X, Moon, Sun, LogOut, User, CheckSquare, Book, CheckCheck } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { logOut } from '../firebase/auth'
 
@@ -125,6 +125,27 @@ export default function Sidebar({ darkMode, setDarkMode }) {
           >
             <CheckSquare size={18} />
             Todo List
+          </NavLink>
+        </div>
+
+        {/* Habits Section */}
+        <div style={{ marginBottom: '20px' }}>
+          <NavLink
+            to="/habits"
+            className={({ isActive }) => isActive ? 'active' : ''}
+            style={{
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 0',
+              fontWeight: '600',
+              fontSize: '14px',
+              color: '#374151'
+            }}
+          >
+            <CheckCheck size={18} />
+            Habits
           </NavLink>
         </div>
 

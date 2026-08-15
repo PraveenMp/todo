@@ -223,3 +223,37 @@ export const deleteDocumentType = async (userId, typeId) => {
   const documentRef = doc(db, 'users', userId, 'documentsV2', typeId)
   await deleteDoc(documentRef)
 }
+
+// ============ HABITS ============
+export const getHabits = async (userId) => {
+  const habitsRef = collection(db, 'users', userId, 'habits')
+  const snapshot = await getDocs(habitsRef)
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+}
+
+export const addHabit = async (userId, habitData) => {
+  const habitRef = doc(db, 'users', userId, 'habits', habitData.id)
+  await setDoc(habitRef, {
+    ...habitData,
+    createdAt: new Date().toISOString()
+  })
+  return habitData.id
+}
+
+export const updateHabit = async (userId, habitId, updates) => {
+  const habitRef = doc(db, 'users', userId, 'habits', habitId)
+  await updateDoc(habitRef, updates)
+}
+
+export const deleteHabit = async (userId, habitId) => {
+  const habitRef = doc(db, 'users', userId, 'habits', habitId)
+  await deleteDoc(habitRef)
+}
+
+export const subscribeToHabits = (userId, callback) => {
+  const habitsRef = collection(db, 'users', userId, 'habits')
+  return onSnapshot(habitsRef, (snapshot) => {
+    const habits = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    callback(habits)
+  })
+}
